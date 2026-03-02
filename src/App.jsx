@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Logo from "./assets/Logo.png";
 import Logo1 from "./assets/Logo_1.png";
+
 const STEPS = [
   { label: "STEP 1",     desc: "Enter your first and last name to get started." },
   { label: "STEP 2",     desc: "Add your phone number for account verification." },
@@ -47,6 +48,8 @@ export default function TruthEye() {
   const [scanProgress, setScanProgress] = useState(0);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const navRef = useRef(null);
+  const [navHeight, setNavHeight] = useState(72);
   const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", email: "", password: "" });
   const [signupPassword, setSignupPassword] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
@@ -54,6 +57,26 @@ export default function TruthEye() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginSubmitted, setLoginSubmitted] = useState(false);
   const [signupSubmitted, setSignupSubmitted] = useState(false);
+
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // measure real navbar height
+  useEffect(() => {
+    const measure = () => {
+      if (navRef.current) setNavHeight(navRef.current.offsetHeight);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   const passwordChecks = {
     length:    signupPassword.length >= 8,
@@ -75,15 +98,6 @@ export default function TruthEye() {
     form.phone.trim().length > 0 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) &&
     allPasswordChecksPassed;
-  const [windowWidth, setWindowWidth] = useState(
-    typeof window !== "undefined" ? window.innerWidth : 1200
-  );
-
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const updateField = (field, value) => {
     const newForm = { ...form, [field]: value };
@@ -100,8 +114,22 @@ export default function TruthEye() {
     }
   };
 
-  const goToSignup = () => { setPage("signup"); setCurrentStep(0); setForm({ firstName: "", lastName: "", phone: "", email: "", password: "" }); setSignupPassword(""); setSignupSubmitted(false); };
-  const goToLogin  = () => { setPage("login"); setCurrentStep(0); setLoginEmail(""); setLoginStudentId(""); setLoginPassword(""); setLoginSubmitted(false); };
+  const goToSignup = () => {
+    setPage("signup");
+    setCurrentStep(0);
+    setForm({ firstName: "", lastName: "", phone: "", email: "", password: "" });
+    setSignupPassword("");
+    setSignupSubmitted(false);
+    setBottomSheetOpen(false);
+  };
+  const goToLogin = () => {
+    setPage("login");
+    setCurrentStep(0);
+    setLoginEmail("");
+    setLoginStudentId("");
+    setLoginPassword("");
+    setLoginSubmitted(false);
+  };
   const goToForgot = () => setPage("forgot");
 
   const stopCamera = () => {
@@ -139,10 +167,9 @@ export default function TruthEye() {
     }, 80);
   };
 
-  // Responsive layout calculations
-  const LOGIN_CARD_TOP_MARGIN = 40;  // ✏️ تحكم في موقع كارد الـ Login
-  const SIGNUP_CARD_TOP_MARGIN = 40;  // ✏️ تحكم في موقع كارد الـ Sign Up
+  // ── Responsive breakpoints ──
   const isDesktop = windowWidth >= 1080;
+  const isMobile  = windowWidth < 640;
 
   // Side panel positioning — only shown on desktop
   const rightGap   = isDesktop ? Math.max(0, (windowWidth - 800) / 2) : 0;
@@ -151,14 +178,29 @@ export default function TruthEye() {
   const stepsWidth = Math.min(240, Math.max(140, rightGap * 0.80));
   const stepsLeft  = `calc(50% + 400px + ${(rightGap - stepsWidth) / 2}px)`;
 
-  const inputStyle = { borderColor: "#9E9E9E", color: "#333", fontSize: "14px", backgroundColor: "#FFFAFA", padding: "12px 16px" };
+  const inputStyle = {
+    borderColor: "#9E9E9E",
+    color: "#333",
+    fontSize: "14px",
+    backgroundColor: "#FFFAFA",
+    padding: "12px 16px",
+  };
+
+  // Bottom sheet extra padding so content isn't hidden behind it
+  const bottomSheetPeekHeight = 28;
 
   return (
     <div
       className="relative w-full flex flex-col"
-      style={{ backgroundColor: "#FFFAFA", height: "100vh", overflowX: "hidden", overflowY: "hidden" }}
+      style={{
+        backgroundColor: "#FFFAFA",
+        minHeight: "100vh",
+        // ✅ FIX: Remove overflow:hidden so mobile can scroll
+        overflowX: "hidden",
+        overflowY: "auto",
+      }}
     >
-      {/* Triangle background */}
+      {/* ── Triangle background ── */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <svg width="100%" height="100%" viewBox="0 90 1290 910" preserveAspectRatio="none">
           <polygon points="1300,80 1600,700 -6,1001" fill="#1C5332" />
@@ -166,7 +208,15 @@ export default function TruthEye() {
       </div>
 
       {/* ── Navbar ── */}
-      <nav className="relative z-20 flex items-center justify-between px-4 sm:px-8" style={{ paddingTop: "clamp(6px, 1.5vh, 16px)", paddingBottom: "clamp(6px, 1.5vh, 16px)", flexShrink: 0 }}>
+      <nav
+        ref={navRef}
+        className="relative z-20 flex items-center justify-between px-4 sm:px-8"
+        style={{
+          paddingTop: "clamp(6px, 1.5vh, 16px)",
+          paddingBottom: "clamp(6px, 1.5vh, 16px)",
+          flexShrink: 0,
+        }}
+      >
         <div className="flex items-center gap-2 md:gap-3">
           <div
             className="overflow-hidden flex items-center justify-center"
@@ -225,23 +275,35 @@ export default function TruthEye() {
 
       {/* ── Main content ── */}
       <div
-        className="relative z-10 flex items-center justify-center px-4 sm:px-6"
-        style={{ flex: 1, minHeight: 0, overflowY: "auto", marginTop: `${page === "signup" ? SIGNUP_CARD_TOP_MARGIN : LOGIN_CARD_TOP_MARGIN}px`, paddingBottom: page === "signup" && !isDesktop ? "80px" : "16px", paddingTop: "8px" }}
+        className="relative z-10 flex items-start justify-center px-4 sm:px-6"
+        style={{
+          flex: 1,
+          // ✅ FIX: paddingTop instead of marginTop so layout stays consistent
+          paddingTop: page === "login"
+            ? "clamp(80px, 15vh, 160px)"
+            : page === "signup"
+            ? "clamp(16px, 3vh, 40px)"
+            : "clamp(16px, 3vh, 40px)",
+          // ✅ FIX: Extra bottom padding on mobile signup so bottom sheet doesn't cover button
+          paddingBottom: page === "signup" && !isDesktop
+            ? `${bottomSheetPeekHeight + 24}px`
+            : "clamp(16px, 3vh, 40px)",
+        }}
       >
         {/* Card container — max 800px, centered */}
-        <div className="relative w-full" style={{ maxWidth: "800px", minHeight: 0 }}>
+        <div className="relative w-full" style={{ maxWidth: "800px" }}>
 
           {/* ════ LOGIN CARD ════ */}
           {page === "login" && (
             <div
               className="bg-[#FFFAFA] rounded-2xl w-full"
               style={{
-                padding: "clamp(10px, 2.5vh, 40px) clamp(20px, 8vw, 80px)",
+                padding: "clamp(20px, 4vh, 40px) clamp(20px, 8vw, 80px)",
                 boxShadow: "0 0px 15px rgba(0,0,0,0.20)",
               }}
             >
-              <div className="text-center" style={{ marginBottom: "clamp(8px, 2vh, 28px)" }}>
-                <h1 className="mb-1" style={{ color: "#1a1a1a", fontSize: "clamp(16px, 3vh, 34px)" }}>
+              <div className="text-center" style={{ marginBottom: "clamp(12px, 2.5vh, 28px)" }}>
+                <h1 className="mb-1" style={{ color: "#1a1a1a", fontSize: "clamp(18px, 3.5vh, 34px)" }}>
                   Welcome to{" "}
                   <span style={{ fontWeight: "bold", color: "#1C5332" }}>Truth</span>
                   <span style={{ fontWeight: "bold", color: "#F3B300" }}>Eye</span>
@@ -249,7 +311,8 @@ export default function TruthEye() {
                 </h1>
                 <p style={{ color: "#1a1a1a", fontSize: "clamp(13px, 2.2vh, 24px)" }}>Log in into your account</p>
               </div>
-              <div className="flex flex-col" style={{ gap: "clamp(6px, 1.2vh, 12px)" }}>
+
+              <div className="flex flex-col" style={{ gap: "clamp(8px, 1.5vh, 14px)" }}>
                 {/* Email */}
                 <div>
                   <input
@@ -261,7 +324,7 @@ export default function TruthEye() {
                       borderColor: loginSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginEmail) ? "#e53e3e" : "#9E9E9E",
                     }}
                     onFocus={e => (e.target.style.borderColor = loginSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginEmail) ? "#e53e3e" : "#1C5332")}
-                    onBlur={e => (e.target.style.borderColor = loginSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginEmail) ? "#e53e3e" : "#9E9E9E")}
+                    onBlur={e  => (e.target.style.borderColor = loginSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginEmail) ? "#e53e3e" : "#9E9E9E")}
                   />
                   {loginSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginEmail) && (
                     <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>
@@ -269,6 +332,7 @@ export default function TruthEye() {
                     </p>
                   )}
                 </div>
+
                 {/* Student ID */}
                 <div>
                   <input
@@ -280,12 +344,13 @@ export default function TruthEye() {
                       borderColor: loginSubmitted && loginStudentId.trim() === "" ? "#e53e3e" : "#9E9E9E",
                     }}
                     onFocus={e => (e.target.style.borderColor = loginSubmitted && loginStudentId.trim() === "" ? "#e53e3e" : "#1C5332")}
-                    onBlur={e => (e.target.style.borderColor = loginSubmitted && loginStudentId.trim() === "" ? "#e53e3e" : "#9E9E9E")}
+                    onBlur={e  => (e.target.style.borderColor = loginSubmitted && loginStudentId.trim() === "" ? "#e53e3e" : "#9E9E9E")}
                   />
                   {loginSubmitted && loginStudentId.trim() === "" && (
                     <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>Student ID is required</p>
                   )}
                 </div>
+
                 {/* Password */}
                 <div className="relative">
                   <input
@@ -297,7 +362,7 @@ export default function TruthEye() {
                       borderColor: loginSubmitted && loginPassword === "" ? "#e53e3e" : "#9E9E9E",
                     }}
                     onFocus={e => (e.target.style.borderColor = loginSubmitted && loginPassword === "" ? "#e53e3e" : "#1C5332")}
-                    onBlur={e => (e.target.style.borderColor = loginSubmitted && loginPassword === "" ? "#e53e3e" : "#9E9E9E")}
+                    onBlur={e  => (e.target.style.borderColor = loginSubmitted && loginPassword === "" ? "#e53e3e" : "#9E9E9E")}
                   />
                   <button
                     type="button" onClick={() => setShowPassword(!showPassword)}
@@ -310,6 +375,7 @@ export default function TruthEye() {
                     <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>Password is required</p>
                   )}
                 </div>
+
                 <div className="flex items-center justify-between flex-wrap gap-2" style={{ marginTop: "clamp(2px, 0.4vh, 6px)" }}>
                   <label className="flex items-center gap-2 cursor-pointer select-none" style={{ fontSize: "14px", color: "#333" }}>
                     <div
@@ -338,11 +404,13 @@ export default function TruthEye() {
                     Forgot Password?
                   </button>
                 </div>
+
                 <p style={{ color: "#666", fontSize: "clamp(10px, 1.2vh, 12px)", marginTop: "clamp(2px, 0.4vh, 6px)" }}>
                   By Creating an Account, it means you agree to our{" "}
                   <span className="underline cursor-pointer" style={{ color: "#1C5332" }}>Privacy Policy</span>{" "}
                   and <span className="underline cursor-pointer" style={{ color: "#1C5332" }}>Terms of Service</span>
                 </p>
+
                 <div className="flex justify-center">
                   <button
                     onClick={() => { setLoginSubmitted(true); if (loginValid) { /* proceed */ } }}
@@ -351,7 +419,9 @@ export default function TruthEye() {
                       backgroundColor: "#1C5332",
                       fontSize: "16px",
                       cursor: "pointer",
-                      border: "none", width: "min(100%, 400px)", height: "clamp(36px, 5.5vh, 48px)",
+                      border: "none",
+                      width: "min(100%, 400px)",
+                      height: "clamp(40px, 6vh, 48px)",
                     }}
                   >
                     Log in
@@ -385,7 +455,7 @@ export default function TruthEye() {
                   className="w-full px-4 py-3 rounded-lg border outline-none transition-all"
                   style={inputStyle}
                   onFocus={e => (e.target.style.borderColor = "#1C5332")}
-                  onBlur={e => (e.target.style.borderColor = "#9E9E9E")}
+                  onBlur={e  => (e.target.style.borderColor = "#9E9E9E")}
                 />
                 <div className="flex justify-center">
                   <button
@@ -502,7 +572,7 @@ export default function TruthEye() {
                     className="w-full px-4 py-3 rounded-lg border outline-none transition-all pr-12"
                     style={inputStyle}
                     onFocus={e => (e.target.style.borderColor = "#1C5332")}
-                    onBlur={e => (e.target.style.borderColor = "#9E9E9E")}
+                    onBlur={e  => (e.target.style.borderColor = "#9E9E9E")}
                   />
                   <button
                     type="button" onClick={() => setShowPassword(!showPassword)}
@@ -518,7 +588,7 @@ export default function TruthEye() {
                     className="w-full px-4 py-3 rounded-lg border outline-none transition-all pr-12"
                     style={inputStyle}
                     onFocus={e => (e.target.style.borderColor = "#1C5332")}
-                    onBlur={e => (e.target.style.borderColor = "#9E9E9E")}
+                    onBlur={e  => (e.target.style.borderColor = "#9E9E9E")}
                   />
                   <button
                     type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -549,24 +619,27 @@ export default function TruthEye() {
             <div
               className="bg-[#FFFAFA] rounded-2xl w-full"
               style={{
-                padding: "clamp(8px, 1.8vh, 32px) clamp(20px, 6vw, 60px)",
+                padding: "clamp(16px, 3vh, 32px) clamp(20px, 6vw, 60px)",
                 boxShadow: "0 0px 15px rgba(0,0,0,0.20)",
               }}
             >
-              <div className="text-center" style={{ marginBottom: "clamp(4px, 1vh, 14px)", marginTop: "clamp(8px, 2vh, 24px)" }}>
-                <p style={{ color: "#1a1a1a", fontSize: "clamp(16px, 3vh, 34px)" }}>
+              <div className="text-center" style={{ marginBottom: "clamp(8px, 1.5vh, 14px)" }}>
+                <p style={{ color: "#1a1a1a", fontSize: "clamp(15px, 2.8vh, 34px)" }}>
                   Welcome to{" "}
                   <span style={{ fontWeight: "bold", color: "#1C5332" }}>Truth</span>
                   <span style={{ fontWeight: "bold", color: "#F3B300" }}>Eye</span>
                   <span style={{ fontWeight: "bold", color: "#1C2933" }}>!</span>
                   {" "}Please log in or create a new account.
                 </p>
-                <h2 className="font-bold" style={{ color: "#1a1a1a", fontSize: "clamp(13px, 2.2vh, 20px)", marginTop: "clamp(2px, 0.4vh, 6px)" }}>
+                <h2 className="font-bold" style={{ color: "#1a1a1a", fontSize: "clamp(12px, 2vh, 20px)", marginTop: "clamp(2px, 0.4vh, 6px)" }}>
                   Start Your 14-Day Free Trial Today.
                 </h2>
-                <p style={{ color: "#888", fontSize: "clamp(9px, 1.1vh, 11px)", letterSpacing: "0.08em", marginTop: "1px" }}>NO CREDIT CARD REQUIRED!</p>
+                <p style={{ color: "#888", fontSize: "clamp(9px, 1vh, 11px)", letterSpacing: "0.08em", marginTop: "1px" }}>
+                  NO CREDIT CARD REQUIRED!
+                </p>
               </div>
-              <div className="flex flex-col" style={{ gap: "clamp(4px, 0.9vh, 10px)" }}>
+
+              <div className="flex flex-col" style={{ gap: "clamp(6px, 1.2vh, 12px)" }}>
                 {/* First Name */}
                 <div>
                   <input
@@ -575,12 +648,13 @@ export default function TruthEye() {
                     className="w-full px-4 py-3 rounded-lg border outline-none transition-all"
                     style={{ ...inputStyle, borderColor: signupSubmitted && form.firstName.trim() === "" ? "#e53e3e" : "#9E9E9E" }}
                     onFocus={e => (e.target.style.borderColor = signupSubmitted && form.firstName.trim() === "" ? "#e53e3e" : "#1C5332")}
-                    onBlur={e => (e.target.style.borderColor = signupSubmitted && form.firstName.trim() === "" ? "#e53e3e" : "#9E9E9E")}
+                    onBlur={e  => (e.target.style.borderColor = signupSubmitted && form.firstName.trim() === "" ? "#e53e3e" : "#9E9E9E")}
                   />
                   {signupSubmitted && form.firstName.trim() === "" && (
                     <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>First name is required</p>
                   )}
                 </div>
+
                 {/* Last Name */}
                 <div>
                   <input
@@ -589,17 +663,22 @@ export default function TruthEye() {
                     className="w-full px-4 py-3 rounded-lg border outline-none transition-all"
                     style={{ ...inputStyle, borderColor: signupSubmitted && form.lastName.trim() === "" ? "#e53e3e" : "#9E9E9E" }}
                     onFocus={e => (e.target.style.borderColor = signupSubmitted && form.lastName.trim() === "" ? "#e53e3e" : "#1C5332")}
-                    onBlur={e => (e.target.style.borderColor = signupSubmitted && form.lastName.trim() === "" ? "#e53e3e" : "#9E9E9E")}
+                    onBlur={e  => (e.target.style.borderColor = signupSubmitted && form.lastName.trim() === "" ? "#e53e3e" : "#9E9E9E")}
                   />
                   {signupSubmitted && form.lastName.trim() === "" && (
                     <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>Last name is required</p>
                   )}
                 </div>
+
                 {/* Phone */}
                 <div>
                   <div
                     className="flex items-center rounded-lg border px-3 gap-2 transition-all"
-                    style={{ borderColor: signupSubmitted && form.phone.trim() === "" ? "#e53e3e" : "#9E9E9E", backgroundColor: "#FFFAFA", height: "48px" }}
+                    style={{
+                      borderColor: signupSubmitted && form.phone.trim() === "" ? "#e53e3e" : "#9E9E9E",
+                      backgroundColor: "#FFFAFA",
+                      height: "48px",
+                    }}
                   >
                     <select
                       value={selectedCountry.code}
@@ -622,6 +701,7 @@ export default function TruthEye() {
                     <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>Phone number is required</p>
                   )}
                 </div>
+
                 {/* Email */}
                 <div>
                   <input
@@ -630,7 +710,7 @@ export default function TruthEye() {
                     className="w-full px-4 py-3 rounded-lg border outline-none transition-all"
                     style={{ ...inputStyle, borderColor: signupSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? "#e53e3e" : "#9E9E9E" }}
                     onFocus={e => (e.target.style.borderColor = signupSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? "#e53e3e" : "#1C5332")}
-                    onBlur={e => (e.target.style.borderColor = signupSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? "#e53e3e" : "#9E9E9E")}
+                    onBlur={e  => (e.target.style.borderColor = signupSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? "#e53e3e" : "#9E9E9E")}
                   />
                   {signupSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && (
                     <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>
@@ -638,6 +718,8 @@ export default function TruthEye() {
                     </p>
                   )}
                 </div>
+
+                {/* Password */}
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"} placeholder="Enter your password"
@@ -649,7 +731,7 @@ export default function TruthEye() {
                     className="w-full px-4 py-3 rounded-lg border outline-none transition-all pr-12"
                     style={inputStyle}
                     onFocus={e => (e.target.style.borderColor = "#1C5332")}
-                    onBlur={e => (e.target.style.borderColor = "#9E9E9E")}
+                    onBlur={e  => (e.target.style.borderColor = "#9E9E9E")}
                   />
                   <button
                     type="button" onClick={() => setShowPassword(!showPassword)}
@@ -659,8 +741,9 @@ export default function TruthEye() {
                     {showPassword ? <EyeIcon /> : <EyeOffIcon />}
                   </button>
                 </div>
+
                 {/* Password strength checklist */}
-                <div className="grid grid-cols-2 gap-x-4" style={{ rowGap: "clamp(1px, 0.4vh, 4px)", marginTop: "clamp(2px, 0.4vh, 6px)" }}>
+                <div className="grid grid-cols-2 gap-x-4" style={{ rowGap: "clamp(2px, 0.4vh, 4px)" }}>
                   {[
                     { key: "length",    label: "Use 8 or more characters" },
                     { key: "lowercase", label: "One lowercase character" },
@@ -694,7 +777,11 @@ export default function TruthEye() {
                     );
                   })}
                 </div>
-                <label className="flex items-start gap-2 cursor-pointer select-none" style={{ fontSize: "clamp(11px, 1.3vh, 13px)", color: "#333", marginTop: "clamp(2px, 0.4vh, 6px)" }}>
+
+                <label
+                  className="flex items-start gap-2 cursor-pointer select-none"
+                  style={{ fontSize: "clamp(11px, 1.3vh, 13px)", color: "#333", marginTop: "clamp(2px, 0.4vh, 6px)" }}
+                >
                   <div
                     onClick={() => setReceiveEmails(!receiveEmails)}
                     className="flex items-center justify-center border-2 rounded transition-all mt-0.5 flex-shrink-0"
@@ -713,12 +800,14 @@ export default function TruthEye() {
                   </div>
                   I want to receive emails about the product, feature updates, events, and marketing promotions.
                 </label>
+
                 <p className="text-xs" style={{ color: "#666" }}>
                   By Creating an Account, it means you agree to our{" "}
                   <span className="underline cursor-pointer" style={{ color: "#1C5332" }}>Privacy Policy</span>{" "}
                   and <span className="underline cursor-pointer" style={{ color: "#1C5332" }}>Terms of Service</span>
                 </p>
-                <div className="flex justify-center mt-2">
+
+                <div className="flex justify-center" style={{ marginTop: "clamp(4px, 1vh, 8px)", marginBottom: "8px" }}>
                   <button
                     onClick={() => {
                       setSignupSubmitted(true);
@@ -731,7 +820,7 @@ export default function TruthEye() {
                       cursor: "pointer",
                       border: "none",
                       width: "min(100%, 400px)",
-                      height: "clamp(36px, 5.5vh, 48px)",
+                      height: "clamp(40px, 6vh, 48px)",
                     }}
                   >
                     Sign Up
@@ -749,27 +838,30 @@ export default function TruthEye() {
               className="fixed pointer-events-none z-10"
               style={{
                 left: logoLeft,
-                top: "50vh",
+                top: "50%",
                 transform: "translateY(-50%)",
                 width: `${logoSize}px`,
                 height: `${logoSize}px`,
-                transition: "all 0.2s ease",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "left 0.2s ease, width 0.2s ease",
               }}
             >
-              <img src={Logo1} alt="AI" className="w-full h-full object-contain" />
+              <img src={Logo1} alt="AI" style={{ width: `${logoSize}px`, height: `${logoSize}px`, objectFit: "contain" }} />
             </div>
           )}
 
           {/* Steps — signup only, desktop */}
           {isDesktop && page === "signup" && (
             <div
-              className="fixed z-10 flex flex-col justify-center"
+              className="fixed z-10"
               style={{
                 left: stepsLeft,
-                top: "50vh",
+                top: "50%",
                 transform: "translateY(-50%)",
                 width: `${stepsWidth}px`,
-                transition: "all 0.2s ease",
+                transition: "left 0.2s ease, width 0.2s ease",
               }}
             >
               <div className="relative">
@@ -834,7 +926,10 @@ export default function TruthEye() {
             className="bg-white rounded-2xl flex flex-col items-center overflow-hidden w-full"
             style={{
               maxWidth: "480px",
-              padding: "clamp(24px, 5vw, 36px) clamp(20px, 5vw, 32px) clamp(20px, 4vw, 32px)",
+              // ✅ FIX: maxHeight + scroll so modal doesn't overflow on small screens
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: "clamp(20px, 5vw, 36px) clamp(16px, 5vw, 32px) clamp(16px, 4vw, 32px)",
               boxShadow: "0 8px 40px rgba(0,0,0,0.3)",
             }}
           >
@@ -848,7 +943,7 @@ export default function TruthEye() {
               </svg>
             </div>
 
-            <h2 className="font-bold mb-5" style={{ color: "#1a1a1a", fontSize: "clamp(15px, 4vw, 18px)", letterSpacing: "0.05em" }}>
+            <h2 className="font-bold mb-5" style={{ color: "#1a1a1a", fontSize: "clamp(14px, 4vw, 18px)", letterSpacing: "0.05em" }}>
               IDENTITY VERIFICATION
             </h2>
 
@@ -858,8 +953,8 @@ export default function TruthEye() {
                 <div
                   className="flex items-center justify-center mb-5 overflow-hidden flex-shrink-0"
                   style={{
-                    width: "clamp(160px, 50vw, 220px)",
-                    height: "clamp(160px, 50vw, 220px)",
+                    width: "clamp(140px, 45vw, 220px)",
+                    height: "clamp(140px, 45vw, 220px)",
                     borderRadius: "50%",
                     border: "2.5px solid #ccc",
                     backgroundColor: "#f5f5f5",
@@ -888,7 +983,7 @@ export default function TruthEye() {
             {scanning === true && (
               <>
                 <div
-                  className="relative mb-4 w-full overflow-hidden"
+                  className="relative mb-4 w-full overflow-hidden flex-shrink-0"
                   style={{ borderRadius: "12px", backgroundColor: "#111", aspectRatio: "4/3" }}
                 >
                   <video ref={videoRef} autoPlay playsInline muted
@@ -921,7 +1016,7 @@ export default function TruthEye() {
             {scanning === "done" && (
               <>
                 <div
-                  className="relative mb-4 w-full overflow-hidden"
+                  className="relative mb-4 w-full overflow-hidden flex-shrink-0"
                   style={{ borderRadius: "12px", backgroundColor: "#111", aspectRatio: "4/3" }}
                 >
                   <video ref={videoRef} autoPlay playsInline muted
@@ -961,7 +1056,7 @@ export default function TruthEye() {
         <div
           className="fixed bottom-0 left-0 right-0 z-30"
           style={{
-            transform: bottomSheetOpen ? "translateY(0)" : "translateY(calc(100% - 28px))",
+            transform: bottomSheetOpen ? "translateY(0)" : `translateY(calc(100% - ${bottomSheetPeekHeight}px))`,
             transition: "transform 0.3s ease",
             backgroundColor: "#FFFAFA",
             borderRadius: "20px 20px 0 0",
@@ -973,7 +1068,7 @@ export default function TruthEye() {
           {/* drag handle */}
           <div
             className="flex justify-center items-center cursor-pointer sticky top-0 bg-[#FFFAFA] z-10"
-            style={{ height: "28px", paddingTop: "8px" }}
+            style={{ height: `${bottomSheetPeekHeight}px`, paddingTop: "8px" }}
             onClick={() => setBottomSheetOpen(o => !o)}
           >
             <div style={{ width: "48px", height: "5px", borderRadius: "3px", backgroundColor: "#1a1a1a" }} />
