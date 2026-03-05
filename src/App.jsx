@@ -36,6 +36,9 @@ export default function TruthEye() {
   const [page, setPage] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [createPasswordSubmitted, setCreatePasswordSubmitted] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [rememberMe, setRememberMe] = useState(true);
   const [receiveEmails, setReceiveEmails] = useState(true);
@@ -60,6 +63,7 @@ export default function TruthEye() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginSubmitted, setLoginSubmitted] = useState(false);
   const [signupSubmitted, setSignupSubmitted] = useState(false);
+  const [forgotSubmitted, setForgotSubmitted] = useState(false);
 
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
@@ -141,7 +145,7 @@ export default function TruthEye() {
     setLoginPassword("");
     setLoginSubmitted(false);
   };
-  const goToForgot = () => setPage("forgot");
+  const goToForgot = () => { setPage("forgot"); setForgotSubmitted(false); };
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -278,7 +282,7 @@ export default function TruthEye() {
         <div className="relative z-20 flex items-center gap-2 md:gap-4 flex-shrink-0">
           {page === "login" ? (
             <>
-              <span className="hidden sm:inline" style={{ color: "#424242", fontSize: "clamp(11px, 1.4vw, 14px)", whiteSpace: "nowrap" }}>
+              <span style={{ color: "#424242", fontSize: "clamp(11px, 1.4vw, 14px)", whiteSpace: "nowrap" }}>
                 No Account yet?
               </span>
               <button
@@ -297,7 +301,7 @@ export default function TruthEye() {
             </>
           ) : (
             <>
-              <span className="hidden sm:inline" style={{ color: "#424242", fontSize: "clamp(11px, 1.4vw, 14px)", whiteSpace: "nowrap" }}>
+              <span style={{ color: "#424242", fontSize: "clamp(11px, 1.4vw, 14px)", whiteSpace: "nowrap" }}>
                 Already a Member?
               </span>
               <button
@@ -393,25 +397,27 @@ export default function TruthEye() {
                 </div>
 
                 {/* Password */}
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"} placeholder="Enter your password"
-                    value={loginPassword} onChange={e => setLoginPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border outline-none transition-all pr-12"
-                    style={{
-                      ...inputStyle,
-                      borderColor: loginSubmitted && loginPassword === "" ? "#e53e3e" : "#9E9E9E",
-                    }}
-                    onFocus={e => (e.target.style.borderColor = loginSubmitted && loginPassword === "" ? "#e53e3e" : "#1C5332")}
-                    onBlur={e  => (e.target.style.borderColor = loginSubmitted && loginPassword === "" ? "#e53e3e" : "#9E9E9E")}
-                  />
-                  <button
-                    type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    style={{ background: "none", border: "none", cursor: "pointer" }}
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
+                <div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"} placeholder="Enter your password"
+                      value={loginPassword} onChange={e => setLoginPassword(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border outline-none transition-all pr-12"
+                      style={{
+                        ...inputStyle,
+                        borderColor: loginSubmitted && loginPassword === "" ? "#e53e3e" : "#9E9E9E",
+                      }}
+                      onFocus={e => (e.target.style.borderColor = loginSubmitted && loginPassword === "" ? "#e53e3e" : "#1C5332")}
+                      onBlur={e  => (e.target.style.borderColor = loginSubmitted && loginPassword === "" ? "#e53e3e" : "#9E9E9E")}
+                    />
+                    <button
+                      type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 hover:text-gray-600"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: showPassword ? "#1C5332" : "#bbb" }}
+                    >
+                      {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                    </button>
+                  </div>
                   {loginSubmitted && loginPassword === "" && (
                     <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>Password is required</p>
                   )}
@@ -490,17 +496,30 @@ export default function TruthEye() {
                 </p>
               </div>
               <div className="flex flex-col gap-4">
-                <input
-                  type="email" placeholder="Enter your university email" value={form.email}
-                  onChange={e => updateField("email", e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border outline-none transition-all"
-                  style={inputStyle}
-                  onFocus={e => (e.target.style.borderColor = "#1C5332")}
-                  onBlur={e  => (e.target.style.borderColor = "#9E9E9E")}
-                />
+                <div>
+                  <input
+                    type="email" placeholder="Enter your university email" value={form.email}
+                    onChange={e => updateField("email", e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border outline-none transition-all"
+                    style={{
+                      ...inputStyle,
+                      borderColor: forgotSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? "#e53e3e" : "#9E9E9E",
+                    }}
+                    onFocus={e => (e.target.style.borderColor = forgotSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? "#e53e3e" : "#1C5332")}
+                    onBlur={e  => (e.target.style.borderColor = forgotSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? "#e53e3e" : "#9E9E9E")}
+                  />
+                  {forgotSubmitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && (
+                    <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>
+                      {form.email.trim() === "" ? "Email is required" : "Please enter a valid email address"}
+                    </p>
+                  )}
+                </div>
                 <div className="flex justify-center">
                   <button
-                    onClick={() => setPage("verify")}
+                    onClick={() => {
+                      setForgotSubmitted(true);
+                      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) setPage("verify");
+                    }}
                     className="py-3 rounded-xl font-bold text-[#FFFAFA] transition-all hover:opacity-90 hover:scale-[1.01]"
                     style={{
                       backgroundColor: "#1C5332", fontSize: "15px", cursor: "pointer",
@@ -609,41 +628,74 @@ export default function TruthEye() {
                 </p>
               </div>
               <div className="flex flex-col gap-3">
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"} placeholder="Enter password"
-                    className="w-full px-4 py-3 rounded-lg border outline-none transition-all pr-12"
-                    style={inputStyle}
-                    onFocus={e => (e.target.style.borderColor = "#1C5332")}
-                    onBlur={e  => (e.target.style.borderColor = "#9E9E9E")}
-                  />
-                  <button
-                    type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    style={{ background: "none", border: "none", cursor: "pointer" }}
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
+                {/* Enter password */}
+                <div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"} placeholder="Enter password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border outline-none transition-all pr-12"
+                      style={{
+                        ...inputStyle,
+                        borderColor: createPasswordSubmitted && newPassword.length < 8 ? "#e53e3e" : "#9E9E9E",
+                      }}
+                      onFocus={e => (e.target.style.borderColor = createPasswordSubmitted && newPassword.length < 8 ? "#e53e3e" : "#1C5332")}
+                      onBlur={e  => (e.target.style.borderColor = createPasswordSubmitted && newPassword.length < 8 ? "#e53e3e" : "#9E9E9E")}
+                    />
+                    <button
+                      type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 hover:text-gray-600"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: showPassword ? "#1C5332" : "#bbb" }}
+                    >
+                      {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                    </button>
+                  </div>
+                  {createPasswordSubmitted && newPassword.trim() === "" && (
+                    <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>Password is required</p>
+                  )}
+                  {createPasswordSubmitted && newPassword.trim() !== "" && newPassword.length < 8 && (
+                    <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>Password must be at least 8 characters</p>
+                  )}
                 </div>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"} placeholder="Confirm password"
-                    className="w-full px-4 py-3 rounded-lg border outline-none transition-all pr-12"
-                    style={inputStyle}
-                    onFocus={e => (e.target.style.borderColor = "#1C5332")}
-                    onBlur={e  => (e.target.style.borderColor = "#9E9E9E")}
-                  />
-                  <button
-                    type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    style={{ background: "none", border: "none", cursor: "pointer" }}
-                  >
-                    {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
+
+                {/* Confirm password */}
+                <div>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"} placeholder="Confirm password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border outline-none transition-all pr-12"
+                      style={{
+                        ...inputStyle,
+                        borderColor: createPasswordSubmitted && (confirmPassword === "" || confirmPassword !== newPassword) ? "#e53e3e" : "#9E9E9E",
+                      }}
+                      onFocus={e => (e.target.style.borderColor = createPasswordSubmitted && (confirmPassword === "" || confirmPassword !== newPassword) ? "#e53e3e" : "#1C5332")}
+                      onBlur={e  => (e.target.style.borderColor = createPasswordSubmitted && (confirmPassword === "" || confirmPassword !== newPassword) ? "#e53e3e" : "#9E9E9E")}
+                    />
+                    <button
+                      type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 hover:text-gray-600"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: showConfirmPassword ? "#1C5332" : "#bbb" }}
+                    >
+                      {showConfirmPassword ? <EyeIcon /> : <EyeOffIcon />}
+                    </button>
+                  </div>
+                  {createPasswordSubmitted && confirmPassword.trim() === "" && (
+                    <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>Please confirm your password</p>
+                  )}
+                  {createPasswordSubmitted && confirmPassword.trim() !== "" && confirmPassword !== newPassword && (
+                    <p style={{ color: "#e53e3e", fontSize: "12px", marginTop: "4px" }}>Passwords do not match</p>
+                  )}
                 </div>
+
                 <div className="flex justify-center mt-2">
                   <button
-                    onClick={goToLogin}
+                    onClick={() => {
+                      setCreatePasswordSubmitted(true);
+                      if (newPassword.length >= 8 && confirmPassword === newPassword) goToLogin();
+                    }}
                     className="py-3 rounded-xl font-bold text-[#FFFAFA] transition-all hover:opacity-90 hover:scale-[1.01]"
                     style={{
                       backgroundColor: "#1C5332", fontSize: "15px", cursor: "pointer",
