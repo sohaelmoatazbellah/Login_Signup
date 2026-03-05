@@ -50,6 +50,9 @@ export default function TruthEye() {
   const streamRef = useRef(null);
   const navRef = useRef(null);
   const [navHeight, setNavHeight] = useState(72);
+  const [windowHeight, setWindowHeight] = useState(
+    typeof window !== "undefined" ? window.innerHeight : 800
+  );
   const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", email: "", password: "" });
   const [signupPassword, setSignupPassword] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
@@ -61,14 +64,22 @@ export default function TruthEye() {
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+      setWindowHeight(window.innerHeight);
+    };
+    const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
-  // measure real navbar height
   useEffect(() => {
     const measure = () => {
       if (navRef.current) setNavHeight(navRef.current.offsetHeight);
@@ -173,10 +184,44 @@ export default function TruthEye() {
 
   // Side panel positioning — only shown on desktop
   const rightGap   = isDesktop ? Math.max(0, (windowWidth - 800) / 2) : 0;
-  const logoSize   = Math.min(264, Math.max(140, rightGap * 0.75));
-  const logoLeft   = `calc(50% + 400px + ${(rightGap - logoSize) / 2}px)`;
-  const stepsWidth = Math.min(240, Math.max(140, rightGap * 0.80));
+  const stepsWidth = Math.min(240, Math.max(120, rightGap * 0.80));
   const stepsLeft  = `calc(50% + 400px + ${(rightGap - stepsWidth) / 2}px)`;
+
+  // ── حساب حدود الـ green triangle بالظبط عند موقع الـ steps ──
+  // SVG: viewBox="0 90 1290 910" preserveAspectRatio="none"
+  // points="1300,80  1600,700  -6,1001"
+  const tri_scaleX = windowWidth  / 1290;
+  const tri_scaleY = windowHeight / 910;
+  const p1x = 1300 * tri_scaleX,  p1y = (80   - 90) * tri_scaleY;
+  const p2x = 1600 * tri_scaleX,  p2y = (700  - 90) * tri_scaleY;
+  const p3x = -6   * tri_scaleX,  p3y = (1001 - 90) * tri_scaleY;
+  const stepsXCenter = windowWidth / 2 + 400 + rightGap / 2;
+  const t13 = (stepsXCenter - p1x) / (p3x - p1x);
+  const greenTopRaw = p1y + t13 * (p3y - p1y);
+  const t23 = (stepsXCenter - p2x) / (p3x - p2x);
+  const greenBottomRaw = p2y + t23 * (p3y - p2y);
+  const greenTop    = Math.max(navHeight + 16, greenTopRaw + 16);
+  const greenBottom = Math.min(windowHeight - 16, greenBottomRaw - 16);
+  const greenAreaHeight = Math.max(180, greenBottom - greenTop);
+  const greenCenterY = greenTop + greenAreaHeight / 2;
+
+  // ── Responsive steps sizing ──
+  const stepsCount = STEPS.length;
+  // بنقسم الـ green area على كل step مع الـ gap
+  const circleSize    = Math.round(Math.min(38, Math.max(14, greenAreaHeight / (stepsCount * 2.6))));
+  const stepsGap      = Math.round(Math.min(16, Math.max(3,  (greenAreaHeight * 0.78 - stepsCount * circleSize) / (stepsCount - 1))));
+  const stepLabelSize = Math.min(13, Math.max(7,   circleSize * 0.35));
+  const stepDescSize  = Math.min(11, Math.max(6,   circleSize * 0.27));
+  // كل row height = أكبر قيمة بين circleSize والـ text (label + 2 lines desc)
+  const rowTextHeight = stepLabelSize * 1.2 + stepDescSize * 1.4 * 2 + circleSize * 0.1;
+  const rowHeight     = Math.max(circleSize, rowTextHeight);
+  // الارتفاع الفعلي الكامل للـ steps content شامل الـ text
+  const stepsContentHeight = stepsCount * rowHeight + (stepsCount - 1) * stepsGap;
+  const stepsPanelTop = Math.round(greenCenterY - stepsContentHeight / 2);
+
+  // ✅ الـ logo بيتصغر بناءً على الـ green area height — محسوب بعد greenAreaHeight
+  const logoSize  = Math.round(Math.min(264, Math.max(80, Math.min(rightGap * 0.75, greenAreaHeight * 0.75))));
+  const logoLeft  = `calc(50% + 400px + ${(rightGap - logoSize) / 2}px)`;
 
   const inputStyle = {
     borderColor: "#9E9E9E",
@@ -186,7 +231,6 @@ export default function TruthEye() {
     padding: "12px 16px",
   };
 
-  // Bottom sheet extra padding so content isn't hidden behind it
   const bottomSheetPeekHeight = 28;
 
   return (
@@ -195,7 +239,6 @@ export default function TruthEye() {
       style={{
         backgroundColor: "#FFFAFA",
         minHeight: "100vh",
-        // ✅ FIX: Remove overflow:hidden so mobile can scroll
         overflowX: "hidden",
         overflowY: "auto",
       }}
@@ -210,14 +253,16 @@ export default function TruthEye() {
       {/* ── Navbar ── */}
       <nav
         ref={navRef}
-        className="relative z-20 flex items-center justify-between px-4 sm:px-8"
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-8"
         style={{
           paddingTop: "clamp(6px, 1.5vh, 16px)",
           paddingBottom: "clamp(6px, 1.5vh, 16px)",
-          flexShrink: 0,
+          backgroundColor: scrolled ? "#FFFAFA" : "transparent",
+          boxShadow: scrolled ? "0 1px 12px rgba(0,0,0,0.08)" : "none",
+          transition: "background-color 0.25s ease, box-shadow 0.25s ease",
         }}
       >
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-shrink-0">
           <div
             className="overflow-hidden flex items-center justify-center"
             style={{ width: "clamp(36px, 5vw, 72px)", height: "clamp(36px, 5vw, 72px)" }}
@@ -230,10 +275,10 @@ export default function TruthEye() {
           </span>
         </div>
 
-        <div className="relative z-20 flex items-center gap-2 md:gap-4">
+        <div className="relative z-20 flex items-center gap-2 md:gap-4 flex-shrink-0">
           {page === "login" ? (
             <>
-              <span style={{ color: "#424242", fontSize: "clamp(11px, 1.4vw, 14px)", whiteSpace: "nowrap" }}>
+              <span className="hidden sm:inline" style={{ color: "#424242", fontSize: "clamp(11px, 1.4vw, 14px)", whiteSpace: "nowrap" }}>
                 No Account yet?
               </span>
               <button
@@ -252,7 +297,7 @@ export default function TruthEye() {
             </>
           ) : (
             <>
-              <span style={{ color: "#424242", fontSize: "clamp(11px, 1.4vw, 14px)", whiteSpace: "nowrap" }}>
+              <span className="hidden sm:inline" style={{ color: "#424242", fontSize: "clamp(11px, 1.4vw, 14px)", whiteSpace: "nowrap" }}>
                 Already a Member?
               </span>
               <button
@@ -275,30 +320,26 @@ export default function TruthEye() {
 
       {/* ── Main content ── */}
       <div
-        className="relative z-10 flex items-start justify-center px-4 sm:px-6"
+        className={`relative z-10 flex justify-center px-4 sm:px-6 ${
+          page === "signup" ? "items-start" : "items-center"
+        }`}
         style={{
           flex: 1,
-          // ✅ FIX: paddingTop instead of marginTop so layout stays consistent
-          paddingTop: page === "login"
-            ? "clamp(80px, 15vh, 160px)"
-            : page === "signup"
-            ? "clamp(16px, 3vh, 40px)"
-            : "clamp(16px, 3vh, 40px)",
-          // ✅ FIX: Extra bottom padding on mobile signup so bottom sheet doesn't cover button
+          paddingTop: page === "signup" ? `${navHeight + 16}px` : `${navHeight + 16}px`,
           paddingBottom: page === "signup" && !isDesktop
             ? `${bottomSheetPeekHeight + 24}px`
-            : "clamp(16px, 3vh, 40px)",
+            : `${navHeight + 16}px`,
+          minHeight: "100vh",
         }}
       >
-        {/* Card container — max 800px, centered */}
-        <div className="relative w-full" style={{ maxWidth: "800px" }}>
+        <div className="relative w-full" style={{ maxWidth: isDesktop ? "800px" : "560px" }}>
 
           {/* ════ LOGIN CARD ════ */}
           {page === "login" && (
             <div
               className="bg-[#FFFAFA] rounded-2xl w-full"
               style={{
-                padding: "clamp(20px, 4vh, 40px) clamp(20px, 8vw, 80px)",
+                padding: "clamp(20px, 4vh, 40px) clamp(16px, 6vw, 80px)",
                 boxShadow: "0 0px 15px rgba(0,0,0,0.20)",
               }}
             >
@@ -490,8 +531,7 @@ export default function TruthEye() {
                   Enter the passcode you just received on your email address ending with *******in@gmail.com
                 </p>
               </div>
-              {/* OTP inputs */}
-              <div className="flex justify-center gap-2 sm:gap-3 mb-8 flex-wrap">
+              <div className="flex justify-center gap-1.5 sm:gap-3 mb-8">
                 {otp.map((digit, i) => (
                   <input
                     key={i}
@@ -511,14 +551,17 @@ export default function TruthEye() {
                       if (e.key === "Backspace" && !otp[i] && i > 0)
                         document.getElementById(`otp-${i - 1}`)?.focus();
                     }}
-                    className="text-center font-bold rounded-lg border-2 outline-none transition-all"
+                    className="text-center font-bold rounded-lg outline-none transition-all flex-1"
                     style={{
-                      width: "clamp(36px, 10vw, 56px)",
-                      height: "clamp(36px, 10vw, 56px)",
+                      minWidth: 0,
+                      maxWidth: "56px",
+                      height: "clamp(40px, 10vw, 56px)",
                       fontSize: "clamp(16px, 3vw, 24px)",
-                      borderColor: digit ? "#F3B300" : "#9E9E9E",
                       color: "#1a1a1a",
-                      backgroundColor: "#FFFAFA",
+                      border: "2px solid transparent",
+                      background: digit
+                        ? "linear-gradient(#FFFAFA, #FFFAFA) padding-box, linear-gradient(135deg, #F3B300, #1C5332) border-box"
+                        : "linear-gradient(#FFFAFA, #FFFAFA) padding-box, linear-gradient(135deg, #9E9E9E, #9E9E9E) border-box",
                     }}
                   />
                 ))}
@@ -619,7 +662,7 @@ export default function TruthEye() {
             <div
               className="bg-[#FFFAFA] rounded-2xl w-full"
               style={{
-                padding: "clamp(16px, 3vh, 32px) clamp(20px, 6vw, 60px)",
+                padding: "clamp(16px, 3vh, 32px) clamp(16px, 5vw, 60px)",
                 boxShadow: "0 0px 15px rgba(0,0,0,0.20)",
               }}
             >
@@ -743,7 +786,13 @@ export default function TruthEye() {
                 </div>
 
                 {/* Password strength checklist */}
-                <div className="grid grid-cols-2 gap-x-4" style={{ rowGap: "clamp(2px, 0.4vh, 4px)" }}>
+                <div
+                  className="grid gap-x-4"
+                  style={{
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                    rowGap: "clamp(2px, 0.4vh, 4px)",
+                  }}
+                >
                   {[
                     { key: "length",    label: "Use 8 or more characters" },
                     { key: "lowercase", label: "One lowercase character" },
@@ -838,8 +887,8 @@ export default function TruthEye() {
               className="fixed pointer-events-none z-10"
               style={{
                 left: logoLeft,
-                top: "50%",
-                transform: "translateY(-50%)",
+                // ✅ نفس منطق الـ steps — متمركز في منتصف الـ green area بالظبط
+                top: `${Math.round(greenCenterY - logoSize / 2)}px`,
                 width: `${logoSize}px`,
                 height: `${logoSize}px`,
                 display: "flex",
@@ -852,24 +901,33 @@ export default function TruthEye() {
             </div>
           )}
 
-          {/* Steps — signup only, desktop */}
+          {/* ════ Steps panel — signup only, desktop ════ */}
           {isDesktop && page === "signup" && (
             <div
               className="fixed z-10"
               style={{
                 left: stepsLeft,
-                top: "50%",
-                transform: "translateY(-50%)",
+                // ✅ positioned exactly so content center = green area center
+                top: `${stepsPanelTop}px`,
                 width: `${stepsWidth}px`,
-                transition: "left 0.2s ease, width 0.2s ease",
+                transition: "left 0.2s ease",
               }}
             >
-              <div className="relative">
+              {/* ✅ الـ inner wrapper بيحتوي على الـ line + الـ steps */}
+              <div className="relative" style={{ width: "100%", overflow: "visible" }}>
+                {/* Vertical connecting line */}
                 <div
                   className="absolute"
-                  style={{ left: "19px", top: "30px", bottom: "30px", width: "1.5px", backgroundColor: "rgba(255,255,255,0.3)" }}
+                  style={{
+                    left: `${circleSize / 2 - 0.75}px`,
+                    top: `${circleSize / 2}px`,
+                    bottom: `${circleSize / 2}px`,
+                    width: "1.5px",
+                    backgroundColor: "rgba(255,255,255,0.3)",
+                  }}
                 />
-                <div className="flex flex-col" style={{ gap: "24px" }}>
+                {/* Steps list */}
+                <div className="flex flex-col" style={{ gap: `${stepsGap}px` }}>
                   {STEPS.map((step, i) => {
                     const done   = i < currentStep;
                     const active = i === currentStep;
@@ -880,29 +938,58 @@ export default function TruthEye() {
                         className="flex items-start gap-3 relative"
                         style={{ cursor: "pointer", zIndex: 1 }}
                       >
+                        {/* Circle */}
                         <div
                           className="flex-shrink-0 rounded-full flex items-center justify-center"
                           style={{
-                            width: "38px", height: "38px",
+                            width: `${circleSize}px`,
+                            height: `${circleSize}px`,
                             backgroundColor: done ? "#F3B300" : "transparent",
                             border: done ? "none" : active ? "2px solid white" : "2px solid rgba(255,255,255,0.45)",
                             transition: "all 0.2s ease",
                           }}
                         >
                           {done && (
-                            <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
+                            <svg
+                              width={circleSize * 0.42}
+                              height={circleSize * 0.42}
+                              viewBox="0 0 12 12"
+                              fill="none"
+                            >
                               <path d="M2 6l3 3 5-5" stroke="#1C5332" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           )}
                           {active && (
-                            <div style={{ width: "12px", height: "12px", borderRadius: "50%", backgroundColor: "white" }} />
+                            <div style={{
+                              width: `${circleSize * 0.32}px`,
+                              height: `${circleSize * 0.32}px`,
+                              borderRadius: "50%",
+                              backgroundColor: "white",
+                            }} />
                           )}
                         </div>
-                        <div style={{ paddingTop: "4px" }}>
-                          <p className="font-bold" style={{ color: "white", fontSize: "clamp(10px, 1vw, 13px)", letterSpacing: "0.06em" }}>
+
+                        {/* Text */}
+                        <div style={{ paddingTop: `${circleSize * 0.1}px` }}>
+                          <p
+                            className="font-bold"
+                            style={{
+                              color: "white",
+                              fontSize: `${stepLabelSize}px`,
+                              letterSpacing: "0.06em",
+                              lineHeight: 1.2,
+                            }}
+                          >
                             {step.label}
                           </p>
-                          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "clamp(9px, 0.9vw, 11px)", lineHeight: "1.5", marginTop: "1px" }}>
+                          <p
+                            style={{
+                              color: "rgba(255,255,255,0.6)",
+                              fontSize: `${stepDescSize}px`,
+                              lineHeight: "1.4",
+                              marginTop: "2px",
+                            }}
+                          >
                             {step.desc}
                           </p>
                         </div>
@@ -913,6 +1000,7 @@ export default function TruthEye() {
               </div>
             </div>
           )}
+
         </div>
       </div>
 
@@ -926,7 +1014,6 @@ export default function TruthEye() {
             className="bg-white rounded-2xl flex flex-col items-center overflow-hidden w-full"
             style={{
               maxWidth: "480px",
-              // ✅ FIX: maxHeight + scroll so modal doesn't overflow on small screens
               maxHeight: "90vh",
               overflowY: "auto",
               padding: "clamp(20px, 5vw, 36px) clamp(16px, 5vw, 32px) clamp(16px, 4vw, 32px)",
